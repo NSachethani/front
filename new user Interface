@@ -1,0 +1,99 @@
+//import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import ForumCategory from '../../components/forum/ForumCategory';
+import CreateForumModal from '../../components/forum/CreateForumModal';
+import Alert from '../../components/common/Alert';
+import Spinner from '../../components/common/Spinner';
+import { useAuth } from '../../contexts/AuthContext';
+
+interface Forum {
+  _id: string;
+  title: string;
+  description: string;
+  postCount: number;
+  date: string;
+}
+
+const ForumPage: React.FC = () => {
+  const [forums, setForums] = useState<Forum[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchForums();
+  }, []);
+
+  const fetchForums = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get('/api/forum');
+      setForums(res.data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load forums. Please try again later.');
+      console.error('Error fetching forums:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateForum = async (title: string, description: string) => {
+    try {
+      const config = {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      };
+      
+      const res = await axios.post('/api/forum', { title, description }, config);
+      setForums([...forums, res.data]);
+      setIsModalOpen(false);
+    } catch (err) {
+      setError('Failed to create forum. Please try again.');
+      console.error('Error creating forum:', err);
+    }
+  };
+
+  const handleForumClick = (forumId: string) => {
+    navigate(`/forum/${forumId}`);
+  };
+
+  if (loading) {
+    return <Spinner />;
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Community Forum</h1>
+        {user?.isAdmin && (
+          <button
+            className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200"
+            onClick={() => setIsModalOpen(true)}
+          >
+            Create New Forum
+          </button>
+        )}
+      </div>
+      
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Welcome to the Social Media Detox Community</h2>
+        <p className="text-gray-700">
+          Connect with others on their detox journey, share your experiences, and get support from people who understand what you're going through.
+        </p>
+        <div className="mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+          <h3 className="text-lg font-medium text-blue-800">Community Guidelines</h3>
+          <ul className="mt-2 list-disc list-inside text-gray-700">
+            <li>Be respectful and supportive of other members</li>
+            <li>Focus on constructive discussions about social media detox</li>
+            <li>Share your own experiences, but avoid giving medical advice</li>
+            <li>No promotion of external services or products</li>
+          </ul>
+        </div>
+      </div>
+      
+      {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
